@@ -1,59 +1,217 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# API REST Todo List - Laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Informations Étudiant
+* **Nom :** Bouhaya Wael
+* **Établissement :** ENSAM Casablanca - Université Hassan II
+* **Filière :** Département Génie Informatique et IA
+* **Enseignant :** Dr. WARDI Ahmed
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Présentation du Projet
+Ce projet consiste en la création d'une API REST complète pour la gestion de tâches (Todo List).  
+L'objectif est de mettre en pratique :
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- La gestion des ressources avec **Eloquent ORM**
+- La validation rigoureuse des requêtes
+- Le respect des standards REST
+- L’utilisation correcte des codes de statut HTTP
+- Une structure de réponse JSON normalisée
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Technologies Utilisées
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- **Laravel**
+- **PHP**
+- **MySQL**
+- **Postman** (tests API)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Aperçu du Code Source
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 1️. Modèle & Migration (`Todo`)
 
-### Premium Partners
+La structure de la table respecte les contraintes du sujet (énumérations, valeurs par défaut et types de données).
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```php
+// database/migrations/xxxx_create_todos_table.php
+public function up(): void {
+    Schema::create('todos', function (Blueprint $table) {
+        $table->id();
+        $table->string('title');
+        $table->text('description')->nullable();
+        $table->boolean('completed')->default(false);
+        $table->enum('priority', ['low', 'medium', 'high'])->default('low');
+        $table->timestamps();
+    });
+}
+```
 
-## Contributing
+```php
+// app/Models/Todo.php
+class Todo extends Model
+{
+    use HasFactory;
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+    protected $fillable = [
+        'title',
+        'description',
+        'completed',
+        'priority'
+    ];
 
-## Code of Conduct
+    protected $casts = [
+        'completed' => 'boolean'
+    ];
+}
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+### 2️. Routes API (`api.php`)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Utilisation de `apiResource` pour respecter les standards REST et d'une route personnalisée pour l'action spécifique de complétion.
 
-## License
+```php
+use App\Http\Controllers\TodoController;
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Route::apiResource('todos', TodoController::class);
+Route::patch('/todos/{id}/complete', [TodoController::class, 'complete']);
+```
+
+---
+
+### 3️. Contrôleur (`TodoController.php`)
+
+Extraits montrant la validation des données et la gestion des réponses normalisées.
+
+#### ➤ Création d'une tâche (POST)
+
+```php
+public function store(Request $request) {
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'priority' => 'sometimes|in:low,medium,high'
+    ]);
+
+    $todo = Todo::create($validated);
+
+    return response()->json([
+        'data' => $todo,
+        'message' => 'Tâche créée avec succès'
+    ], 201);
+}
+```
+
+#### ➤ Suppression d'une tâche (DELETE)
+
+```php
+public function destroy(string $id) {
+    $todo = Todo::find($id);
+
+    if (!$todo) {
+        return response()->json([
+            'message' => 'Tâche non trouvée'
+        ], 404);
+    }
+
+    $todo->delete();
+
+    return response()->json(null, 204);
+}
+```
+
+#### ➤ Marquer une tâche comme complétée (PATCH)
+
+```php
+public function complete(string $id) {
+    $todo = Todo::find($id);
+
+    if (!$todo) {
+        return response()->json([
+            'message' => 'Tâche non trouvée'
+        ], 404);
+    }
+
+    $todo->update(['completed' => true]);
+
+    return response()->json([
+        'data' => $todo,
+        'message' => 'Tâche marquée comme complétée'
+    ], 200);
+}
+```
+
+---
+
+## Tests Postman (Endpoints)
+
+### Cas de Succès
+
+| Méthode | URI | Action | Status | Capture d'écran |
+|----------|------|---------|----------|------------------|
+| **GET** | `/api/todos` | Lister toutes les tâches | `200 OK` | `01_index_success.png` |
+| **POST** | `/api/todos` | Créer une tâche | `201 Created` | `02_store_success.png` |
+| **GET** | `/api/todos/{id}` | Afficher une tâche | `200 OK` | `03_show_success.png` |
+| **PUT** | `/api/todos/{id}` | Modifier une tâche | `200 OK` | `04_update_success.png` |
+| **PATCH** | `/api/todos/{id}/complete` | Marquer comme complétée | `200 OK` | `05_complete_success.png` |
+| **DELETE** | `/api/todos/{id}` | Supprimer une tâche | `204 No Content` | `06_delete_success.png` |
+
+---
+
+### Gestion des Erreurs (404 Not Found)
+
+L'API gère correctement les ressources inexistantes pour chaque méthode :
+
+- **GET (show)** → `E01_show_notfound_404.png`
+- **PUT (update)** → `E02_update_notfound_404.png`
+- **PATCH (complete)** → `E03_complete_notfound_404.png`
+- **DELETE (destroy)** → `E04_delete_notfound_404.png`
+
+---
+
+## 📂 Structure des Livrables
+
+```
+app/
+ ├── Models/
+ │   └── Todo.php
+ ├── Http/
+ │   └── Controllers/
+ │       └── TodoController.php
+
+database/
+ └── migrations/
+
+routes/
+ └── api.php
+
+screenshots/
+ ├── 01_index_success.png
+ ├── 02_store_success.png
+ ├── ...
+ └── E04_delete_notfound_404.png
+```
+
+---
+
+## 🚀 Lancement du Projet
+
+```bash
+git clone <repository_url>
+cd todo-list
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+L’API sera accessible via :
+
+```
+http://127.0.0.1:8000/api/todos
+```
