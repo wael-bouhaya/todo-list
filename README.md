@@ -53,8 +53,6 @@ public function up(): void {
 // app/Models/Todo.php
 class Todo extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'title',
         'description',
